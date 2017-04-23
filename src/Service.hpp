@@ -59,10 +59,9 @@ public:
 		running = false;
 
 		std::mutex joinLock;
-		std::condition_variable joinCondition;
 		std::unique_lock<std::mutex> waitLock(joinLock);
 
-		joinCondition.wait(waitLock, [this]{return !jobList.empty();});
+		joinCondition.wait(waitLock, [this]{return jobList.empty();});
 
 		for (std::thread &worker : workThreads)
 		{
@@ -120,7 +119,7 @@ protected:
 	 * @param ... every optional parameter given into the function.
 	 * @return Returns a valid future for future use.
 	 */
-#define NSA_MAKE_PROMISE(functionName, returnValueType, ...) return makePromise<returnValueType>(std::bind(&functionName, this, std::placeholders::_1, __VA_ARGS__))
+#define NSA_MAKE_PROMISE(functionName, returnValueType, ...) return makePromise<returnValueType>(std::bind(&functionName, this, std::placeholders::_1, ##__VA_ARGS__))
 
 private:
 	/**
@@ -140,6 +139,8 @@ private:
 			currentJob();
 			jobCount++;
 		}
+
+		joinCondition.notify_all();
 	}
 
 protected:
@@ -148,9 +149,9 @@ protected:
 private:
 	BlockingQueue<std::function<void()>> jobList; ///< The job list.
 	std::atomic<std::size_t> jobCount;            ///< Total job count.
-	std::thread workThread;                       ///< The thread object.
 	std::atomic<bool> running;                    ///< Status of the service.
 	std::vector<std::thread> workThreads;         ///< Collection of workers.
+	std::condition_variable joinCondition;
 };
 
 } // namespace NSA
