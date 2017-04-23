@@ -125,90 +125,128 @@ std::string createRandomFlavor()
 }
 
 /**
- * @brief Thread function which generates customers.
- * @details This threaded function creates customers
- * based on a regulated model for the icecream service
- * simulation.
- * 
- * @param vendor A reference to the vendor to which send the customers.
- * @param done A status message to indicate the end of the simulation.
+ * @brief A service that creates customers.
+ * @details This service generates customers based upon the specifications
+ * described in the excercise.
  */
-void customers(IcecreamVendor &vendor, bool &done)
+class Customers : public NSA::Service
 {
-	// Define intervals of cusomters.
-	const int morning = 7;
-	const int midday  = 3;
-	const int evening = 10;
+public:
+	/**
+	 * @brief Default constructor.
+	 * @param vendor A initialized vendor service.
+	 */
+	Customers(IcecreamVendor &vendor) : Service("Customers"),
+		vendor(vendor)
+	{}
 
-	printf("Morning customers\n");
-	for (std::size_t group = 0; group < 10; group++)
+	/**
+	 * @brief Creates a random amount of customers.
+	 * @return A future containing a true status.
+	 */
+	Service::Future<bool> simulateCustomers()
 	{
-		const std::size_t customers = (rand() % 3) + 1;
-		std::this_thread::sleep_for(std::chrono::seconds(morning));
-
-		printf("A group arives containing %d customers.\n", customers);
-
-		for (std::size_t customer = 0; customer < customers; customer++)
-			vendor.serveIcecream(createRandomFlavor());
+		NSA_MAKE_PROMISE(Customers::simulateCustomersImp, bool);
 	}
 
-	printf("Midday customers\n");
-	for (std::size_t group = 0; group < 10; group++)
+private:
+
+	/**
+	 * @brief Implementation of the service interface.
+	 * @param promise Promises to give an update once it is finished.
+	 */
+	void simulateCustomersImp(Service::Promise<bool> promise)
 	{
-		const std::size_t customers = (rand() % 3) + 3;
-		std::this_thread::sleep_for(std::chrono::seconds(midday));
+		// Define intervals of cusomters.
+		const int morning = 7;
+		const int midday  = 3;
+		const int evening = 10;
+		const int groups  = 1;
 
-		printf("A group arives containing %d customers.\n", customers);
+		printf("Morning customers\n");
+		for (std::size_t group = 0; group < groups; group++)
+		{
+			const std::size_t customers = (rand() % 3) + 1;
+			std::this_thread::sleep_for(std::chrono::seconds(morning));
 
-		for (std::size_t customer = 0; customer < customers; customer++)
-			vendor.serveIcecream(createRandomFlavor());
+			printf("A group arives containing %d customers.\n", customers);
+
+			for (std::size_t customer = 0; customer < customers; customer++)
+				vendor.serveIcecream(createRandomFlavor());
+		}
+
+		printf("Midday customers\n");
+		for (std::size_t group = 0; group < groups; group++)
+		{
+			const std::size_t customers = (rand() % 3) + 3;
+			std::this_thread::sleep_for(std::chrono::seconds(midday));
+
+			printf("A group arives containing %d customers.\n", customers);
+
+			for (std::size_t customer = 0; customer < customers; customer++)
+				vendor.serveIcecream(createRandomFlavor());
+		}
+
+		printf("Evening customers\n");
+		for (std::size_t group = 0; group < groups; group++)
+		{
+			const std::size_t customers = (rand() % 4) + 3;
+			std::this_thread::sleep_for(std::chrono::seconds(evening));
+
+			printf("A group arives containing %d customers.\n", customers);
+
+			for (std::size_t customer = 0; customer < customers; customer++)
+				vendor.serveIcecream(createRandomFlavor());
+		}
+
+		promise->set_value(true);
 	}
 
-	printf("Evening customers\n");
-	for (std::size_t group = 0; group < 10; group++)
-	{
-		const std::size_t customers = (rand() % 4) + 3;
-		std::this_thread::sleep_for(std::chrono::seconds(evening));
+	IcecreamVendor &vendor; ///< A reference to a vendor.
 
-		printf("A group arives containing %d customers.\n", customers);
-
-		for (std::size_t customer = 0; customer < customers; customer++)
-			vendor.serveIcecream(createRandomFlavor());
-	}	
-
-	done = true;
-}
+};
 
 int main(int argc, char **argv)
 {
 	// Create a icecream vendor.
 	IcecreamVendor vendor;
+	Customers customers(vendor);
 
 	// Add 3 workers to the vendor.
-	vendor.detach(3);
+	const int storeWorkers = 3;
+	printf("The store is open.\n");
+	vendor.detach(storeWorkers);
 
-	// Set the wait condition.
-	bool done = false;
+	// Add 1 worker to simulate customers.
+	printf("Customor simulation is ready.\n");
+	customers.detach();
 
-	// Send in the customers.
-	printf("The store is open\n");
-	std::thread customerThread(&customers, std::ref(vendor), std::ref(done));
+	// Status of the simulation worker.
+	NSA::Service::Future<bool> simulationEnd = customers.simulateCustomers();
+	std::future_status status;
 
-	// Print out overview information.
-	while (!done)
+	// Post status information as long as the simulation runs.
+	do
 	{
 		printf("Current waiting customers: %d. Total customers: %d\n",
 			vendor.currentJobs(), vendor.totalJobs());
-		std::this_thread::sleep_for(std::chrono::seconds(1));
+
+		status = simulationEnd->wait_for(std::chrono::seconds(1));
 	}
+	while(status != std::future_status::ready);
+
 	printf("Store is closed, working of the final jobs.\n");
 
 	// Join the costumer producing thread.
-	customerThread.join();
+	printf("Closing customer simulation.\n");
+	customers.join();
 
 	// Join the costumer cnsuming thread.
+	printf("Closing store\n");
 	vendor.join();
 
-	printf("A total of %d customers where served today.\n", vendor.totalJobs());
+	/// The total number of customers is the total amount of jobs - the worker count.
+	/// Each worker adds a final cleanup job after it is asked to join up.
+	printf("A total of %d customers where served today.\n", vendor.totalJobs() - storeWorkers);
 	return EXIT_SUCCESS;
 }
