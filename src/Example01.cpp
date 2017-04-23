@@ -161,7 +161,7 @@ private:
 		const int morning = 7;
 		const int midday  = 3;
 		const int evening = 10;
-		const int groups  = 1;
+		const int groups  = 10;
 
 		printf("Morning customers\n");
 		for (std::size_t group = 0; group < groups; group++)
