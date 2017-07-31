@@ -23,9 +23,9 @@ int main(int argc, char **argv)
     {
         for (int i = 0; i < MAXFRAMES; i++)
         {
-            std::this_thread::sleep_for(std::chrono::seconds(4));
+            std::this_thread::sleep_for(std::chrono::seconds(1));
             printf("Produecer1: %d\n", i);
-            queue.push(Test());
+            queue.push(Test(), std::chrono::milliseconds(40000));
         }
 
         done = true;
@@ -35,9 +35,9 @@ int main(int argc, char **argv)
     {
         for (int i = 0; i < MAXFRAMES; i++)
         {
-            std::this_thread::sleep_for(std::chrono::seconds(4));
+            std::this_thread::sleep_for(std::chrono::seconds(1));
             printf("Produce2: %d\n", i);
-            queue.push(Test());
+            queue.push(Test(), std::chrono::milliseconds(40000));
         }
 
         done = true;
@@ -46,9 +46,9 @@ int main(int argc, char **argv)
 
     std::thread consumer([&](){
         int i = 0;
-        for (int i = 0; i < MAXFRAMES; i++)
+        for (int i = 0; i < 2*MAXFRAMES; i++)
         {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            std::this_thread::sleep_for(std::chrono::seconds(4));
             Test dst;
             queue.pop(&dst);
             printf("Consumed: %d\n", i);

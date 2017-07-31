@@ -32,8 +32,8 @@ public:
 	 * detach and join functions.
 	 * @param name Each service should have name.
 	 */
-	Service(const std::string name) : running(false), name(name),
-		jobCount(0)
+	Service(const std::string name, const std::size_t jobLimit = 0) : running(false), name(name),
+		jobCount(0), jobList(jobLimit)
 	{}
 
 	/**
@@ -80,6 +80,11 @@ public:
 		return jobList.size();
 	}
 
+	void jobTimeOut(std::chrono::milliseconds timeOut)
+	{
+		timeOut = timeOut;
+	}
+
 protected:
 	/**
 	 * @brief A helper function to create a promise.
@@ -102,7 +107,8 @@ protected:
 
 		if (running)
 		{
-			jobList.push(std::bind(job, promise));
+			if (!jobList.push(std::bind(job, promise), timeOut))
+				printf("%s: Job timed out. Timeout is at %d\n", name.c_str(), timeOut);
 		}
 
 		return future;	
@@ -151,7 +157,8 @@ private:
 	std::atomic<std::size_t> jobCount;            ///< Total job count.
 	std::atomic<bool> running;                    ///< Status of the service.
 	std::vector<std::thread> workThreads;         ///< Collection of workers.
-	std::condition_variable joinCondition;
+	std::condition_variable joinCondition;        ///< Condition for clean up.
+	std::chrono::milliseconds timeOut;            ///< TimeOut to drop job.
 };
 
 } // namespace NSA

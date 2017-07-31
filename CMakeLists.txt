@@ -17,7 +17,13 @@ set (EXAMPLE_SERVICE
 	"src/Example01.cpp"
 )
 
+set (EXAMPLE_BARBER
+	"src/Example02.cpp"
+)
+
 add_executable(unit_BlockingQueue ${UNITTEST_BLOCKINGQUEUE})
 add_executable(example01 ${EXAMPLE_SERVICE})
+add_executable(example02 ${EXAMPLE_BARBER})
 target_link_libraries(unit_BlockingQueue "pthread")
 target_link_libraries(example01 "pthread")
+target_link_libraries(example02 "pthread")
