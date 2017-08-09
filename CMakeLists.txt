@@ -1,29 +1,39 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.7)
 
-project (NativeServiceArchitecture)
+project (NativeServiceArchitecture VERSION 0.1 LANGUAGES CXX)
+set (CMAKE_PROJECT_NAME_SHORT "NSA")
 
-set (Service_VERSION_MAJOR 0)
-set (Service_VERSION_MINOR 0)
+# Must use GNUInstallDirs to install libraries into correct
+# locations on all platforms.
+include(GNUInstallDirs)
 
-set (CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/bin)
-set (EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
-set (LIBRARY_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/lib)
+set (NSA_HEADERS
+	"include/Service.hpp"
+	"include/BlockingQueue.hpp"
+)
 
 set (UNITTEST_BLOCKINGQUEUE
-	"src/BlockingQueueTest.cpp"
+	"unit/BlockingQueueTest.cpp"
 )
 
-set (EXAMPLE_SERVICE
-	"src/Example01.cpp"
+set (NSA_SOURCES
+	"src/dummy.cpp"
 )
 
-set (EXAMPLE_BARBER
-	"src/Example02.cpp"
+add_library(NativeServiceArchitecture ${NSA_SOURCES})
+
+target_include_directories(NativeServiceArchitecture PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
 )
+
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${CMAKE_PROJECT_NAME_SHORT})
 
 add_executable(unit_BlockingQueue ${UNITTEST_BLOCKINGQUEUE})
-add_executable(example01 ${EXAMPLE_SERVICE})
-add_executable(example02 ${EXAMPLE_BARBER})
-target_link_libraries(unit_BlockingQueue "pthread")
-target_link_libraries(example01 "pthread")
-target_link_libraries(example02 "pthread")
+
+target_link_libraries(unit_BlockingQueue NativeServiceArchitecture pthread)
+target_include_directories(unit_BlockingQueue PRIVATE include)
+
+enable_testing()
+
+add_test(unit_BlockingQueue unit_BlockingQueue)

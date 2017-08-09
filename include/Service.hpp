@@ -4,7 +4,7 @@
 #include <thread>
 #include <future>
 
-#include "BlockingQueue.hpp"
+#include <NSA/BlockingQueue.hpp>
 
 namespace NSA
 {
